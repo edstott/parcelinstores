@@ -1,0 +1,79 @@
+\usetikzlibrary{calc}
+\begin{tikzpicture}[x=1mm,y=1mm]
+	\newcommand\piswidth{100}
+	\newcommand\pischannels{6}
+	\newcommand\pislamprad{6}
+	\newcommand\pislampx{25}
+	\newcommand\pislamppitch{20}
+	\newcommand\pislamptop{30}
+	\newcommand\pislampbot{30}
+	\newcommand\pislabx{20}
+	\newcommand\pislabpitch{45}
+	\newcommand\pislabhole{0.5}
+	\newcommand\pislabright{20}
+
+	\newcommand\pismortcount{3}
+	\newcommand\pismortlen{15}
+	\newcommand\pismortinset{5}
+	\newcommand\pismortwidth{3}
+	\newcommand\pismortpitch{25}
+
+	\newcount\pislampy
+	\newcount\pismorty
+	\newcount\pismortx
+
+	\newcount\pisheight
+	\pisheight=\pislamppitch
+	\multiply\pisheight by \pischannels
+	\advance\pisheight by -\pislamppitch
+	\advance\pisheight by \pislamptop
+	\advance\pisheight by \pislampbot
+
+	\newcount\piswidth
+	\piswidth = \pislampx
+	\advance\piswidth by \pislabx
+	\advance\piswidth by \pislabpitch
+	\advance\piswidth by \pislabright
+
+	%\node [rectangle,draw,minimum width=\piswidth,minimum height = \pisheight,anchor=south west] {};
+	\draw (0,0)--(\piswidth,0)
+		--(\piswidth,\pisheight)
+		--(0,\pisheight)
+		--(0,0);
+	\foreach \y in {1,...,\pischannels}
+		{
+		\pislampy=\y
+		\multiply\pislampy by \pislamppitch
+		\advance\pislampy by -\pislamppitch
+		\advance\pislampy by \pislampbot
+		\node (lamp) at (\pislampx,\pislampy) {};
+		\node (labl) at ($(lamp.center)+(\pislabx,0)$) {};
+		\node (labr) at ($(labl.center)+(\pislabpitch,0)$) {};
+		\draw (lamp.center) circle (\pislamprad);
+		\draw (labl.center) circle (\pislabhole);
+		\draw (labr.center) circle (\pislabhole);
+		};
+
+	\foreach \y in {1,...,\pismortcount}
+		{
+		\pismorty = \y
+		\advance\pismorty by -1
+		\multiply\pismorty by \pismortpitch
+		\advance\pismorty by \pismortinset
+
+		\pismortx = \pismortinset
+		\draw (\pismortx,\pismorty) -- ($(\pismortx,\pismorty)+(0,\pismortlen)$)
+			-- ($(\pismortx,\pismorty)+(\pismortwidth,\pismortlen)$)
+			--  ($(\pismortx,\pismorty)+(\pismortwidth,0)$)
+			-- (\pismortx,\pismorty);
+
+		\pismortx = \piswidth
+		\advance\pismortx by -\pismortinset
+		\draw (\pismortx,\pismorty) -- ($(\pismortx,\pismorty)+(0,\pismortlen)$)
+			-- ($(\pismortx,\pismorty)+(-\pismortwidth,\pismortlen)$)
+			--  ($(\pismortx,\pismorty)+(-\pismortwidth,0)$)
+			-- (\pismortx,\pismorty);
+		
+		}
+
+\end{tikzpicture}
