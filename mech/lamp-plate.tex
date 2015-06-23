@@ -1,14 +1,14 @@
 \usetikzlibrary{calc}
-\begin{tikzpicture}[x=1mm,y=1mm]
-	\newcommand\piswidth{100}
+
+\begin{tikzpicture}[x=1mm,y=1mm,every path/.style={color=red,line width=0.01bp,text=blue}]
 	\newcommand\pischannels{6}
-	\newcommand\pislamprad{6}
-	\newcommand\pislampx{25}
-	\newcommand\pislamppitch{20}
+	\newcommand\pislamprad{10}
+	\newcommand\pislampx{35}
+	\newcommand\pislamppitch{38}
 	\newcommand\pislamptop{30}
-	\newcommand\pislampbot{30}
-	\newcommand\pislabx{20}
-	\newcommand\pislabpitch{45}
+	\newcommand\pislampbot{165}
+	\newcommand\pislabx{30}
+	\newcommand\pislabpitch{72.5}
 	\newcommand\pislabhole{0.5}
 	\newcommand\pislabright{20}
 
@@ -17,6 +17,11 @@
 	\newcommand\pismortinset{5}
 	\newcommand\pismortwidth{3}
 	\newcommand\pismortpitch{25}
+
+	\newcommand\pisbelldia{156}
+
+	\newcommand\pisgap{6}
+	\newcommand\pisstandlen{120}
 
 	\newcount\pislampy
 	\newcount\pismorty
@@ -29,11 +34,22 @@
 	\advance\pisheight by \pislamptop
 	\advance\pisheight by \pislampbot
 
+	\newcount\piswidthlab
+	\piswidthlab = \pislampx
+	\advance\piswidthlab by \pislabx
+	\advance\piswidthlab by \pislabpitch
+	\advance\piswidthlab by \pislabright
+
+	\newcount\piswidthbel
+	\piswidthbel = \pisbelldia
+	\advance\piswidthbel by \pismortwidth
+	\advance\piswidthbel by \pismortwidth
+	\advance\piswidthbel by \pismortinset
+	\advance\piswidthbel by \pismortinset
+
 	\newcount\piswidth
-	\piswidth = \pislampx
-	\advance\piswidth by \pislabx
-	\advance\piswidth by \pislabpitch
-	\advance\piswidth by \pislabright
+	\pgfmathparse{max(\piswidthlab,\piswidthbel)}
+	\pgfmathsetlength{\piswidth}{max(\piswidthlab,\piswidthbel)}
 
 	%\node [rectangle,draw,minimum width=\piswidth,minimum height = \pisheight,anchor=south west] {};
 	\draw (0,0)--(\piswidth,0)
@@ -75,5 +91,59 @@
 			-- (\pismortx,\pismorty);
 		
 		}
+
+	\node [align=center] at ($0.5*(\piswidth,\pislampbot)$) {\huge Parcel\\\huge in\\ \huge Stores};
+
+
+	\foreach \y in {1,...,\pismortcount}
+		{
+		\pismorty = \y
+		\advance\pismorty by -1
+		\multiply\pismorty by \pismortpitch
+		\advance\pismorty by \pisheight
+		\advance\pismorty by \pisgap
+		\draw ($(\pismortinset,\pismorty)+(0,\pismortinset)$)
+			-- +(-\pismortinset,0)
+			-- +(-\pismortinset,\pismortlen)
+			-- +(0,\pismortlen)
+			-- +(0,\pismortpitch);
+		}
+
+	\pismorty = \pismortcount
+	\multiply\pismorty by \pismortpitch
+	\advance\pismorty by \pismortinset
+		
+	\draw ($(0,\pisheight)+(\pismortinset,\pisgap)$)
+			-- +(0,\pismortinset);
+	\draw ($(0,\pisheight)+(\pismortinset,\pisgap)$)
+			-- +(\pisstandlen,0)
+			-- + (0,\pismorty);
+
+	\foreach \y in {1,...,\pismortcount}
+		{
+		\pismorty = \y
+		\multiply\pismorty by \pismortpitch
+		\advance\pismorty by \pisheight
+		\advance\pismorty by \pisgap
+		\draw ($(\piswidth,\pismorty)-(\pismortinset,0)$)
+			-- +(\pismortinset,0)
+			-- +(\pismortinset,-\pismortlen)
+			-- +(0,-\pismortlen)
+			-- +(0,-\pismortpitch);
+		}
+
+	\pismorty = \pismortcount
+	\multiply\pismorty by \pismortpitch
+	\advance\pismorty by \pisgap
+	\draw ($(\piswidth,\pisheight)+(-\pismortinset,\pismorty)$)
+			-- +(0,\pismortinset)
+			-- +(-\pisstandlen,\pismortinset)
+			-- +($(0,-\pismorty)+(0,\pisgap)$);
+
+	\advance\pisheight by \pismorty
+	\advance\pisheight by \pismortinset
+
+	\message{Overall width = \the\piswidth}
+	\message{Overall height = \the\pisheight}
 
 \end{tikzpicture}
