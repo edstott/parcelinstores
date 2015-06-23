@@ -1,11 +1,17 @@
 #!/usr/bin/env python
 
 import urllib2, re
+from bs4 import BeautifulSoup
 
+# CAS members to watch
+CAS = ['LEVINE', 'STOTT', 'DAVIS', 'OGDEN', 'WIJEYASINGHE', 'HUNG']
 # Credential file
-LOGIN = 'credentials'
-# URL of 
+LOGIN = '.credentials'
+# URL of stores parcel tracker
 STORES = 'https://intranet.ee.ic.ac.uk/storesweb/parcels/GoodsInWeb.html'
+# Colour of new and collected parcels
+NEW = {'bgcolor':'Beige'}
+COLLECTED = {'bgcolor':'LightSteelBlue'}
 
 # Read user credentials from the credential file
 with open(LOGIN) as login:
@@ -26,4 +32,20 @@ urllib2.install_opener(opener)
 response = urllib2.urlopen(STORES)
 html = response.read()
 
-# 
+soup = BeautifulSoup(html)
+
+# Find the first table in the page
+table = soup.find("table")
+# Find all of the rows (tr) objects with NEW attributes
+for row in table.findAll('tr', NEW):
+	# Find all the cells/data (td) in this row
+	cells = row.findAll('td')
+	# Strip the tags from each cell and convert contents to utf8
+	cells = [cell.text.strip().encode('utf8') for cell in cells]
+	print cells
+
+
+
+
+
+
