@@ -4,7 +4,7 @@ import urllib2, re
 from bs4 import BeautifulSoup
 
 # CAS members to watch
-CAS = ['LEVINE', 'STOTT', 'DAVIS', 'OGDEN', 'WIJEYASINGHE', 'HUNG']
+CAS = ['LEVINE', 'STOTT', 'DAVIS', 'OGDEN', 'WIJEYASINGHE', 'HUNG', 'FOK']
 # Credential file
 LOGIN = '.credentials'
 # URL of stores parcel tracker
@@ -29,7 +29,7 @@ opener = urllib2.build_opener(handler)
 urllib2.install_opener(opener)
 
 # Open up the site and scrape the html
-response = urllib2.urlopen(STORES)
+response = urllib2.urlopen(STORES, timeout = 1)
 html = response.read()
 
 soup = BeautifulSoup(html)
@@ -37,13 +37,16 @@ soup = BeautifulSoup(html)
 # Find the first table in the page
 table = soup.find("table")
 # Find all of the rows (tr) objects with NEW attributes
-for row in table.findAll('tr', NEW):
+# for row in table.findAll('tr', NEW):
+for row in table.findAll('tr'):
 	# Find all the cells/data (td) in this row
 	cells = row.findAll('td')
 	# Strip the tags from each cell and convert contents to utf8
 	cells = [cell.text.strip().encode('utf8') for cell in cells]
-	print cells
-
+	# Check the row isn't blank before proceeding further
+	if cells:
+		if (any(name.upper() in CAS for name in cells[4].split(' '))):
+			print 'CAS matches:', cells
 
 
 
