@@ -41,10 +41,10 @@ class StoppableThread(Thread):
 		return self._stop.isSet()
 
 # class hardware(Thread):
-# 	def __init__(self, flash_queue):
+# 	def __init__(self, hardware_queue):
 # 		Thread.__init__(self)
 
-# 		self.flash_queue = flash_queue
+# 		self.hardware_queue = hardware_queue
 
 # 		# Setup the GPIO channels
 # 		GPIO.setmode(GPIO.BCM)
@@ -56,7 +56,7 @@ class StoppableThread(Thread):
 
 # 	def run(self):
 # 		while True:
-# 			(channel, operation) = flash_queue.get()
+# 			(channel, operation) = hardware_queue.get()
 # 			# Bell channel - turn off and on quickly
 # 			if channel is CHANNELS[-1]:
 # 				GPIO.output(channel, GPIO.HIGH)
@@ -69,15 +69,38 @@ class StoppableThread(Thread):
 # 					GPIO.output(channel, GPIO.HIGH)
 # 				else:
 # 					GPIO.output(channel, GPIO.LOW)
-# 			flash_queue.task_done()
+# 			hardware_queue.task_done()
+
+class hardware(Thread):
+	def __init__(self, hardware_queue):
+		Thread.__init__(self)
+		self.daemon = True
+
+		self.hardware_queue = hardware_queue
+		self.start()
+
+	def run(self):
+		while True:
+			(channel, operation) = hardware_queue.get()
+			# Bell channel - turn off and on quickly
+			if channel is CHANNELS[-1]:
+				print 'Ringing the bell'
+			# Other channels - off for False, on for True
+			else:
+				if operation:
+					print 'Turning channel: %d ON' % channel
+				else:
+					print 'Turning channel: %d OFF' % channel
+			hardware_queue.task_done()
+
 
 class flasher(StoppableThread):
-	def __init__ (self, channel, flash_queue):
+	def __init__ (self, channel, hardware_queue):
 
 		StoppableThread.__init__(self)
 
 		self.channel = channel
-		self.flash_queue = flash_queue
+		self.hardware_queue = hardware_queue
 
 		# Randomised on and off periods for that vintage feel
 		self.on_time = FLASH + random.uniform(-FLASH_RANDOM,FLASH_RANDOM)
@@ -88,10 +111,10 @@ class flasher(StoppableThread):
 
 	def run(self):
 		status = True
-		while not stopped():
-			self.flash_queue.put((self.channel, True))
+		while not self.stopped():
+			self.hardware_queue.put((self.channel, True))
 			self._stop.wait(self.on_time)
-			self.flash_queue.put((self.channel, False))
+			self.hardware_queue.put((self.channel, False))
 			self._stop.wait(self.off_time)
 
 if __name__ == '__main__':
@@ -103,39 +126,45 @@ if __name__ == '__main__':
 	flashers = {x:None for x in CAS.keys()}
 
 	# Flasher queue
-	flasher_queue = Queue()
+	hardware_queue = Queue()
 
-	# Read user credentials from the credential file
-	with open(LOGIN) as login:
-			(username, password) = login.read().split(' ')
+	# Fire up the hardware thread
+	hardware = hardware(hardware_queue)
 
-	# Create a password manager instance for the stores URL and load with user credentials
-	password_mgr = urllib2.HTTPPasswordMgrWithDefaultRealm()
-	password_mgr.add_password(None, STORES, username, password.decode('base64'))
+	# # Read user credentials from the credential file
+	# with open(LOGIN) as login:
+	# 		(username, password) = login.read().split(' ')
 
-	# Create and build an auth handler with this password manager and 
-	handler = urllib2.HTTPBasicAuthHandler(password_mgr)
-	opener = urllib2.build_opener(handler)
+	# # Create a password manager instance for the stores URL and load with user credentials
+	# password_mgr = urllib2.HTTPPasswordMgrWithDefaultRealm()
+	# password_mgr.add_password(None, STORES, username, password.decode('base64'))
 
-	# Install the opener
-	urllib2.install_opener(opener)
+	# # Create and build an auth handler with this password manager and 
+	# handler = urllib2.HTTPBasicAuthHandler(password_mgr)
+	# opener = urllib2.build_opener(handler)
+
+	# # Install the opener
+	# urllib2.install_opener(opener)
 
 	# Set up for the main loop
 	first_loop = True
-	ring_bell = False
 
 	# Loop forever, sleeping between iterations
 	while True:
 		# Open up the stores parcel tracker site, try again if times out
-		response = None
-		while response is None:
-			try:
-				response = urllib2.urlopen(STORES, timeout = 1)
-			except urllib2.URLError, ssl.SSLError:
-				pass
+		# response = None
+		# while response is None:
+		# 	try:
+		# 		response = urllib2.urlopen(STORES, timeout = 1)
+		# 	except urllib2.URLError, ssl.SSLError:
+		# 		pass
 
-		# Read the site and pass to BeautifulSoup
-		html = response.read()
+		# # Read the site and pass to BeautifulSoup
+		# html = response.read()
+		# soup = BeautifulSoup(html)
+
+		with open('ParcelTracking.html') as website:
+			html = website.read()
 		soup = BeautifulSoup(html)
 
 		# Find the first table in the page
@@ -164,7 +193,7 @@ if __name__ == '__main__':
 				# But they have a parcel
 				if curr_parcels[person]:
 					# Make them a flasher
-					flashers[person] = flasher(CHANNELS[CAS[person]], flash_queue)
+					flashers[person] = flasher(CHANNELS[CAS[person]], hardware_queue)
 			# If they do have a flasher
 			else:
 				#But they don't have a parcel
@@ -178,12 +207,15 @@ if __name__ == '__main__':
 		# Only do this after the first iteration of the loop
 		if not first_loop:
 			for person in CAS.keys():
+				print person,
+				print prev_parcels[person],
+				print curr_parcels[person]
 				new_parcels = [parcel for parcel in curr_parcels[person] if parcel not in prev_parcels[person]]
+				print new_parcels
 				# If there are any new parcels, ring the bell
 				if new_parcels:
-					flash_queue.put((CHANNEL[-1], True))
+					hardware_queue.put((CHANNEL[-1], True))
 					break
-
 
 		# Clean up before sleeping
 		prev_parcels = curr_parcels
