@@ -56,7 +56,9 @@ class hardware(Thread):
 			# Bell channel - turn off and on quickly
 			if channel is CHANNELS[-1]:
 				GPIO.output(channel, GPIO.HIGH)
-				GPIO.output(Challen, GPIO.LOW)
+				GPIO.output(channel, GPIO.LOW)
+				GPIO.output(channel, GPIO.HIGH)
+				GPIO.output(channel, GPIO.LOW)
 			# Other channels - off for False, on for True
 			else:
 				if operation:
@@ -168,24 +170,17 @@ if __name__ is '__main__':
 					flashers[person].join()
 					cas_flasher[person] = None
 
-
-			if not new_parcels[person]:
-				# If they have a parcel, spawn a flasher
-				flashers[person] = flasher(CHANNELS[CAS[person]], flash_queue)
-			else:
-				if flashers[person]
-
 		# Now loop through the data and see what has change - ring the bell for new parcels
 		# Only do this after the first iteration of the loop
 		if not first_loop:
 			for person in CAS.keys():
 				new_parcels = [parcel for parcel in new_parcels[person] if parcel not in prev_parcels[person]]
 				print person, new_parcels
-				if len(new_parcels) > 0:
+				if new_parcels:
 					ring_bell = True
 
 		if ring_bell:
-			print "Ringing the bell"
+			flash_queue.put((CHANNEL[-1], True))
 			ring_bell = False
 
 		# Clean up before sleeping
