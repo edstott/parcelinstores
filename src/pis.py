@@ -179,13 +179,11 @@ if __name__ == '__main__':
 		if not first_loop:
 			for person in CAS.keys():
 				new_parcel = [parcel for parcel in curr_parcels[person] if parcel not in prev_parcels[person]]
+				# If there are any new parcels, ring the bell
 				if new_parcel:
-					ring_bell = True
+					flash_queue.put((CHANNEL[-1], True))
+					break
 
-		# If anyone has a new parcel we need to ring the bell
-		if ring_bell:
-			flash_queue.put((CHANNEL[-1], True))
-			ring_bell = False
 
 		# Clean up before sleeping
 		prev_parcels = curr_parcels
