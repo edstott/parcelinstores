@@ -5,13 +5,11 @@ from bs4 import BeautifulSoup
 import time
 from threading import Thread, Event
 import random
+import RPi.GPIO as GPIO
 
 
 # CAS members to watch and their bulb ordering
 CAS = {'LEVINE,J':3, 'STOTT,E':5, 'DAVIS,J':1, 'OGDEN,P':4, 'WIJEYASINGHE,M':0, 'HUNG,E':2}
-# Build current and new dictionaries
-cas_prev = {x:[] for x in CAS.keys()}
-cas_new = {x:[] for x in CAS.keys()}
 
 # Lamp to channel relationships
 # Index is ordering (bulb is CHANNELS[-1])
@@ -38,6 +36,9 @@ class StoppableThread(Thread):
 	def stopped(self):
 		return self._stop.isSet()
 
+class hardware(Thread):
+	def __init__(self, flash_queue)
+
 
 class flasher(StoppableThread):
 	def __init__ (self, channel, flash_queue):
@@ -63,6 +64,16 @@ class flasher(StoppableThread):
 			self._stop.wait(self.off_time)
 
 if __name__ is '__main__':
+
+	# Build current and new dictionaries
+	prev_parcels = {x:[] for x in CAS.keys()}
+	new_parcels = {x:[] for x in CAS.keys()}
+	# Built flasher instance dictionary
+	flashers = {x:None for x in CAS.keys()}
+
+	# Flasher queue
+	flasher_queue = Queue()
+
 	# Read user credentials from the credential file
 	with open(LOGIN) as login:
 			(username, password) = login.read().split(' ')
@@ -112,19 +123,38 @@ if __name__ is '__main__':
 						if any([True if name.upper() == surname else False for name in cells[4].split(' ')]):
 							# Check the initial - only works if CAS members don't have same surname and forename initials!
 							if any([True if name.upper()[0] == initial else False for name in cells[4].split(' ')]):
-								cas_new[person].append(cells[0])
+								new_parcels[person].append(cells[0])
 
 
 		# Loop through the new parcels and fire up flashers for each person who has a parcel
 		for person in CAS.keys():
-			if not cas_new[person]:
+			# If the person doesn't already have a flasher
+			if not flashers[person]:
+				# But they have a parcel
+				if new_parcels[person]:
+					# Make them a flasher
+					flashers[person] = flasher(CAS[person], flash_queue)
+			# If they do have a flasher
+			else:
+				#But they don't have a parcel
+				if not new_parcels[person]:
+					# Get rid of their flasher
+					flashers[person].stop()
+					flashers[person].join()
+					cas_flasher[person] = None
 
+
+			if not new_parcels[person]:
+				# If they have a parcel, spawn a flasher
+				flashers[person] = flasher(CAS[person], flash_queue)
+			else:
+				if flashers[person]
 
 		# Now loop through the data and see what has change - ring the bell for new parcels
 		# Only do this after the first iteration of the loop
 		if not first_loop:
 			for person in CAS.keys():
-				new_parcels = [parcel for parcel in cas_new[person] if parcel not in cas_prev[person]]
+				new_parcels = [parcel for parcel in new_parcels[person] if parcel not in prev_parcels[person]]
 				print person, new_parcels
 				if len(new_parcels) > 0:
 					ring_bell = True
@@ -134,7 +164,7 @@ if __name__ is '__main__':
 			ring_bell = False
 
 		# Clean up before sleeping
-		cas_prev = cas_new
+		prev_parcels = new_parcels
 		first_loop = False
 
 		# Sleep for a bit
