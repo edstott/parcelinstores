@@ -37,13 +37,38 @@ class StoppableThread(Thread):
 		return self._stop.isSet()
 
 class hardware(Thread):
-	def __init__(self, flash_queue)
+	def __init__(self, flash_queue):
+		Thread.__init__(self)
 
+		self.flash_queue = flash_queue
+
+		# Setup the GPIO channels
+		GPIO.setmode(GPIO.BCM)
+		for channel in CHANNELS:
+			GPIO.setmode(channel, GPIO.OUT)
+			GPIO.output(channel, GPIO.LOW)
+
+		self.start()
+
+	def run(self):
+		while True:
+			(channel, operation) = flash_queue.get()
+			# Bell channel - turn off and on quickly
+			if channel is CHANNELS[-1]:
+				GPIO.output(channel, GPIO.HIGH)
+				GPIO.output(Challen, GPIO.LOW)
+			# Other channels - off for False, on for True
+			else:
+				if operation:
+					GPIO.output(channel, GPIO.HIGH)
+				else:
+					GPIO.output(channel, GPIO.LOW)
+			flash_queue.task_done()
 
 class flasher(StoppableThread):
 	def __init__ (self, channel, flash_queue):
 
-		Thread.__init__(self)
+		StoppableThread.__init__(self)
 
 		self.channel = channel
 		self.flash_queue = flash_queue
@@ -133,7 +158,7 @@ if __name__ is '__main__':
 				# But they have a parcel
 				if new_parcels[person]:
 					# Make them a flasher
-					flashers[person] = flasher(CAS[person], flash_queue)
+					flashers[person] = flasher(CHANNELS[CAS[person]], flash_queue)
 			# If they do have a flasher
 			else:
 				#But they don't have a parcel
@@ -146,7 +171,7 @@ if __name__ is '__main__':
 
 			if not new_parcels[person]:
 				# If they have a parcel, spawn a flasher
-				flashers[person] = flasher(CAS[person], flash_queue)
+				flashers[person] = flasher(CHANNELS[CAS[person]], flash_queue)
 			else:
 				if flashers[person]
 
