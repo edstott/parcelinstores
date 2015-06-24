@@ -178,9 +178,9 @@ if __name__ == '__main__':
 		# Only do this after the first iteration of the loop
 		if not first_loop:
 			for person in CAS.keys():
-				new_parcel = [parcel for parcel in curr_parcels[person] if parcel not in prev_parcels[person]]
+				new_parcels = [parcel for parcel in curr_parcels[person] if parcel not in prev_parcels[person]]
 				# If there are any new parcels, ring the bell
-				if new_parcel:
+				if new_parcels:
 					flash_queue.put((CHANNEL[-1], True))
 					break
 
