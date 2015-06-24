@@ -179,6 +179,7 @@ if __name__ is '__main__':
 				if new_parcels:
 					ring_bell = True
 
+		# If anyone has a new parcel we need to ring the bell
 		if ring_bell:
 			flash_queue.put((CHANNEL[-1], True))
 			ring_bell = False
