@@ -5,7 +5,8 @@ from bs4 import BeautifulSoup
 import time
 from threading import Thread, Event
 import random
-import RPi.GPIO as GPIO
+from Queue import Queue
+# import RPi.GPIO as GPIO
 
 
 # CAS members to watch and their bulb ordering
@@ -22,8 +23,11 @@ STORES = 'https://intranet.ee.ic.ac.uk/storesweb/parcels/GoodsInWeb.html'
 # Colour of new and collected parcels
 NEW = {'bgcolor':'Beige'}
 COLLECTED = {'bgcolor':'LightSteelBlue'}
+# Flashing period and random adjustment
 FLASH = 1.0
 FLASH_RANDOM = 0.25
+# Stores website polling interval
+SLEEP = 10
 
 class StoppableThread(Thread):
 	def __init__(self):
@@ -36,36 +40,36 @@ class StoppableThread(Thread):
 	def stopped(self):
 		return self._stop.isSet()
 
-class hardware(Thread):
-	def __init__(self, flash_queue):
-		Thread.__init__(self)
+# class hardware(Thread):
+# 	def __init__(self, flash_queue):
+# 		Thread.__init__(self)
 
-		self.flash_queue = flash_queue
+# 		self.flash_queue = flash_queue
 
-		# Setup the GPIO channels
-		GPIO.setmode(GPIO.BCM)
-		for channel in CHANNELS:
-			GPIO.setmode(channel, GPIO.OUT)
-			GPIO.output(channel, GPIO.LOW)
+# 		# Setup the GPIO channels
+# 		GPIO.setmode(GPIO.BCM)
+# 		for channel in CHANNELS:
+# 			GPIO.setmode(channel, GPIO.OUT)
+# 			GPIO.output(channel, GPIO.LOW)
 
-		self.start()
+# 		self.start()
 
-	def run(self):
-		while True:
-			(channel, operation) = flash_queue.get()
-			# Bell channel - turn off and on quickly
-			if channel is CHANNELS[-1]:
-				GPIO.output(channel, GPIO.HIGH)
-				GPIO.output(channel, GPIO.LOW)
-				GPIO.output(channel, GPIO.HIGH)
-				GPIO.output(channel, GPIO.LOW)
-			# Other channels - off for False, on for True
-			else:
-				if operation:
-					GPIO.output(channel, GPIO.HIGH)
-				else:
-					GPIO.output(channel, GPIO.LOW)
-			flash_queue.task_done()
+# 	def run(self):
+# 		while True:
+# 			(channel, operation) = flash_queue.get()
+# 			# Bell channel - turn off and on quickly
+# 			if channel is CHANNELS[-1]:
+# 				GPIO.output(channel, GPIO.HIGH)
+# 				GPIO.output(channel, GPIO.LOW)
+# 				GPIO.output(channel, GPIO.HIGH)
+# 				GPIO.output(channel, GPIO.LOW)
+# 			# Other channels - off for False, on for True
+# 			else:
+# 				if operation:
+# 					GPIO.output(channel, GPIO.HIGH)
+# 				else:
+# 					GPIO.output(channel, GPIO.LOW)
+# 			flash_queue.task_done()
 
 class flasher(StoppableThread):
 	def __init__ (self, channel, flash_queue):
@@ -90,11 +94,11 @@ class flasher(StoppableThread):
 			self.flash_queue.put((self.channel, False))
 			self._stop.wait(self.off_time)
 
-if __name__ is '__main__':
+if __name__ == '__main__':
 
 	# Build current and new dictionaries
 	prev_parcels = {x:[] for x in CAS.keys()}
-	new_parcels = {x:[] for x in CAS.keys()}
+	curr_parcels = {x:[] for x in CAS.keys()}
 	# Built flasher instance dictionary
 	flashers = {x:None for x in CAS.keys()}
 
@@ -150,7 +154,7 @@ if __name__ is '__main__':
 						if any([True if name.upper() == surname else False for name in cells[4].split(' ')]):
 							# Check the initial - only works if CAS members don't have same surname and forename initials!
 							if any([True if name.upper()[0] == initial else False for name in cells[4].split(' ')]):
-								new_parcels[person].append(cells[0])
+								curr_parcels[person].append(cells[0])
 
 
 		# Loop through the new parcels and fire up flashers for each person who has a parcel
@@ -158,25 +162,24 @@ if __name__ is '__main__':
 			# If the person doesn't already have a flasher
 			if not flashers[person]:
 				# But they have a parcel
-				if new_parcels[person]:
+				if curr_parcels[person]:
 					# Make them a flasher
 					flashers[person] = flasher(CHANNELS[CAS[person]], flash_queue)
 			# If they do have a flasher
 			else:
 				#But they don't have a parcel
-				if not new_parcels[person]:
+				if not curr_parcels[person]:
 					# Get rid of their flasher
 					flashers[person].stop()
 					flashers[person].join()
-					cas_flasher[person] = None
+					flashers[person] = None
 
 		# Now loop through the data and see what has change - ring the bell for new parcels
 		# Only do this after the first iteration of the loop
 		if not first_loop:
 			for person in CAS.keys():
-				new_parcels = [parcel for parcel in new_parcels[person] if parcel not in prev_parcels[person]]
-				print person, new_parcels
-				if new_parcels:
+				new_parcel = [parcel for parcel in curr_parcels[person] if parcel not in prev_parcels[person]]
+				if new_parcel:
 					ring_bell = True
 
 		# If anyone has a new parcel we need to ring the bell
@@ -185,7 +188,7 @@ if __name__ is '__main__':
 			ring_bell = False
 
 		# Clean up before sleeping
-		prev_parcels = new_parcels
+		prev_parcels = curr_parcels
 		first_loop = False
 
 		# Sleep for a bit
