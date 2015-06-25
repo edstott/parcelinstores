@@ -46,6 +46,9 @@ class hardware(Thread):
 
 		self.hardware_queue = hardware_queue
 
+		# Disable warnings for GPIO
+		GPIO.setwarnings(False)
+
 		# Setup the GPIO channels
 		GPIO.setmode(GPIO.BCM)
 		for channel in CHANNELS:
