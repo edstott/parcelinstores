@@ -61,8 +61,7 @@ class hardware(Thread):
 			# Bell channel - turn off and on quickly
 			if channel is CHANNELS[-1]:
 				GPIO.output(channel, GPIO.HIGH)
-				GPIO.output(channel, GPIO.LOW)
-				GPIO.output(channel, GPIO.HIGH)
+				time.sleep(0.1)
 				GPIO.output(channel, GPIO.LOW)
 			# Other channels - off for False, on for True
 			else:
