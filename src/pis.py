@@ -150,17 +150,17 @@ if __name__ == '__main__':
 
 	# Loop forever, sleeping between iterations
 	while True:
-		# Open up the stores parcel tracker site, try again if times out
-		response = None
-		while response is None:
-			try:
-				response = urllib2.urlopen(STORES, timeout = 1)
-			except urllib2.URLError, ssl.SSLError:
-				pass
+		# # Open up the stores parcel tracker site, try again if times out
+		# response = None
+		# while response is None:
+		# 	try:
+		# 		response = urllib2.urlopen(STORES, timeout = 1)
+		# 	except urllib2.URLError, ssl.SSLError:
+		# 		pass
 
-		# Read the site and pass to BeautifulSoup
-		html = response.read()
-		soup = BeautifulSoup(html)
+		# # Read the site and pass to BeautifulSoup
+		# html = response.read()
+		# soup = BeautifulSoup(html)
 
 		with open('ParcelTracking.html') as website:
 			html = website.read()
