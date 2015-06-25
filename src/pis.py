@@ -24,8 +24,10 @@ STORES = 'https://intranet.ee.ic.ac.uk/storesweb/parcels/GoodsInWeb.html'
 NEW = {'bgcolor':'Beige'}
 COLLECTED = {'bgcolor':'LightSteelBlue'}
 # Flashing period and random adjustment
-FLASH = 1.0
-FLASH_RANDOM = 0.25
+FLASH_FREQ = 0.5
+FLASH_FREQ_RAND= 0.1
+FLASH_DUTY = 50
+FLASH_DUTY_RAND = 10
 # Stores website polling interval
 SLEEP = 10
 
@@ -40,7 +42,7 @@ class StoppableThread(Thread):
 	def stopped(self):
 		return self._stop.isSet()
 
-class hardware(Thread):
+class hardware(StoppableThread):
 	def __init__(self, hardware_queue):
 		Thread.__init__(self)
 
@@ -49,84 +51,50 @@ class hardware(Thread):
 		# Disable warnings for GPIO
 		GPIO.setwarnings(False)
 
+		# Dictionary to contain the flasher instances and randomised duty cycles for each channel
+		self.pwms ={}
+
 		# Setup the GPIO channels
 		GPIO.setmode(GPIO.BCM)
-		for channel in CHANNELS:
+		for channel in CHANNELS[:-1]:
 			GPIO.setup(channel, GPIO.OUT)
 			GPIO.output(channel, GPIO.LOW)
+
+			flash_freq_rand = random.uniform(-FLASH_FREQ_RAND,FLASH_FREQ_RAND)
+			flash_duty_rand = random.uniform(-FLASH_DUTY_RAND,FLASH_DUTY_RAND)
+
+			self.pwms{channel} = (GPIO.PWM(pwmPin, FLASH_FREQ+flash_freq_rand), FLASH_DUTY+flash_duty_rand)
 
 		self.start()
 
 	def run(self):
-		while True:
+		while not self.stopped():
 			(channel, operation) = hardware_queue.get()
 			# Bell channel - turn off and on quickly
 			if channel is CHANNELS[-1]:
 				GPIO.output(channel, GPIO.HIGH)
 				time.sleep(0.025)
 				GPIO.output(channel, GPIO.LOW)
-			# Other channels - off for False, on for True
+				time.sleep(0.25)
+				GPIO.output(channel, GPIO.HIGH)
+				time.sleep(0.025)
+				GPIO.output(channel, GPIO.LOW)
+			# Other channels - start or stop the PWM
 			else:
 				if operation:
-					GPIO.output(channel, GPIO.HIGH)
+					self.pwms{channel}[0].start(self.pwms{channel}[1])
 				else:
-					GPIO.output(channel, GPIO.LOW)
+					self.pwms{channel}[0].stop()
 			hardware_queue.task_done()
-
-# class hardware(Thread):
-# 	def __init__(self, hardware_queue):
-# 		Thread.__init__(self)
-# 		self.daemon = True
-
-# 		self.hardware_queue = hardware_queue
-# 		self.start()
-
-# 	def run(self):
-# 		while True:
-# 			(channel, operation) = hardware_queue.get()
-# 			# Bell channel - turn off and on quickly
-# 			if channel is CHANNELS[-1]:
-# 				print 'Ringing the bell'
-# 			# Other channels - off for False, on for True
-# 			else:
-# 				if operation:
-# 					print 'Turning channel: %d ON' % channel
-# 				else:
-# 					print 'Turning channel: %d OFF' % channel
-# 			hardware_queue.task_done()
-
-
-class flasher(StoppableThread):
-	def __init__ (self, channel, hardware_queue):
-
-		StoppableThread.__init__(self)
-
-		self.channel = channel
-		self.hardware_queue = hardware_queue
-
-		# Randomised on and off periods for that vintage feel
-		self.on_time = FLASH + random.uniform(-FLASH_RANDOM,FLASH_RANDOM)
-		self.off_time = FLASH +  random.uniform(-FLASH_RANDOM,FLASH_RANDOM)
-
-		# Start the flasher thread
-		self.start()
-
-	def run(self):
-		status = True
-		while not self.stopped():
-			self.hardware_queue.put((self.channel, True))
-			self._stop.wait(self.on_time)
-			self.hardware_queue.put((self.channel, False))
-			self._stop.wait(self.off_time)
+		# If the thread has been stopped, clean up the GPIO
+		for channel in CHANNELS[:-1]:
+			self.pwms{channel}[0].stop()
+		GPIO.cleanup()
 
 if __name__ == '__main__':
 
-	try: #Catch KeyboardInterrupt
-
-		# Built flasher instance dictionary
-		flashers = {x:None for x in CAS.keys()}
-	
-		# Flasher queue
+	try:
+		# Hardware queue
 		hardware_queue = Queue()
 	
 		# Fire up the hardware thread
@@ -146,9 +114,6 @@ if __name__ == '__main__':
 	
 		# Install the opener
 		urllib2.install_opener(opener)
-	
-		# Set up for the main loop
-		first_loop = True
 	
 		# Loop forever, sleeping between iterations
 		while True:
@@ -191,52 +156,39 @@ if __name__ == '__main__':
 									curr_parcels[person].append(cells[0])
 	
 	
-			# Loop through the new parcels and fire up flashers for each person who has a parcel
+
+			# Loop through the new parcels and flash a blub for whoever has a parcel
 			for person in CAS.keys():
-				# If the person doesn't already have a flasher
-				if not flashers[person]:
-					# But they have a parcel
-					if curr_parcels[person]:
-						# Make them a flasher
-						flashers[person] = flasher(CHANNELS[CAS[person]], hardware_queue)
+				# If someone has a parcel
+				if curr_parcels[person]:
+					# Flash their bulb
+					hardware_queue.put((CAS[person], True))
 				# If they do have a flasher
 				else:
 					#But they don't have a parcel
 					if not curr_parcels[person]:
-						# Get rid of their flasher
-						flashers[person].stop()
-						flashers[person].join()
-						flashers[person] = None
+						# Turn off their bulb
+						hardware_queue.put((CAS[person], False))
 	
 			# Now loop through the data and see what has change - ring the bell for new parcels
 			# Only do this after the first iteration of the loop
-			if not first_loop:
+			try:
 				for person in CAS.keys():
 					new_parcels = [parcel for parcel in curr_parcels[person] if parcel not in prev_parcels[person]]
 					# If there are any new parcels, ring the bell
 					if new_parcels:
-						hardware_queue.put((CHANNELS[-1], True))
-						time.sleep(0.25)
+						# Ring the bell!
 						hardware_queue.put((CHANNELS[-1], True))
 						break
+			# prev_parcels doesn't yet exist on first iteration
+			except NameError:
+				pass
 	
 			# Clean up before sleeping
-			prev_parcels = curr_parcels.copy()
-			first_loop = False
-	
+			prev_parcels = curr_parcels.copy()	
 			# Sleep for a bit
 			time.sleep(SLEEP)
 	
 	except KeyboardInterrupt:
-		for channel in CHANNELS:
-			hardware_queue.put((channel, False))	
-			
-		for flasher in flashers:
-			try:
-				flasher.stop()
-				flasher.join()
-			except AttributeError:
-				pass
 		hardware.stop()
 		hardware.join()
-		GPIO.cleanup()
