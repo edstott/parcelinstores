@@ -6,6 +6,7 @@ import time
 from threading import Thread, Event
 import random
 from Queue import Queue
+import copy
 # import RPi.GPIO as GPIO
 
 
@@ -119,9 +120,7 @@ class flasher(StoppableThread):
 
 if __name__ == '__main__':
 
-	# Build current and new dictionaries
-	prev_parcels = {x:[] for x in CAS.keys()}
-	curr_parcels = {x:[] for x in CAS.keys()}
+
 	# Built flasher instance dictionary
 	flashers = {x:None for x in CAS.keys()}
 
@@ -167,6 +166,9 @@ if __name__ == '__main__':
 			html = website.read()
 		soup = BeautifulSoup(html)
 
+		# Build current parcel data structure
+		curr_parcels = {x:[] for x in CAS.keys()}
+
 		# Find the first table in the page
 		table = soup.find("table")
 		# Find all of the rows (tr) objects with NEW attributes
@@ -209,16 +211,17 @@ if __name__ == '__main__':
 			for person in CAS.keys():
 				print person,
 				print prev_parcels[person],
-				print curr_parcels[person]
+				print curr_parcels[person],
 				new_parcels = [parcel for parcel in curr_parcels[person] if parcel not in prev_parcels[person]]
 				print new_parcels
 				# If there are any new parcels, ring the bell
 				if new_parcels:
-					hardware_queue.put((CHANNEL[-1], True))
+					hardware_queue.put((CHANNELS[-1], True))
 					break
+				print ''
 
 		# Clean up before sleeping
-		prev_parcels = curr_parcels
+		prev_parcels = curr_parcels.copy()
 		first_loop = False
 
 		# Sleep for a bit
