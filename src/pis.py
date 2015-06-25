@@ -209,16 +209,11 @@ if __name__ == '__main__':
 		# Only do this after the first iteration of the loop
 		if not first_loop:
 			for person in CAS.keys():
-				print person,
-				print prev_parcels[person],
-				print curr_parcels[person],
 				new_parcels = [parcel for parcel in curr_parcels[person] if parcel not in prev_parcels[person]]
-				print new_parcels
 				# If there are any new parcels, ring the bell
 				if new_parcels:
 					hardware_queue.put((CHANNELS[-1], True))
 					break
-				print ''
 
 		# Clean up before sleeping
 		prev_parcels = curr_parcels.copy()
