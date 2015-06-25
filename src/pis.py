@@ -146,9 +146,6 @@ if __name__ == '__main__':
 	# Install the opener
 	urllib2.install_opener(opener)
 
-	# Set up for the main loop
-	first_loop = True
-
 	# Loop forever, sleeping between iterations
 	while True:
 		# Open up the stores parcel tracker site, try again if times out
@@ -208,8 +205,7 @@ if __name__ == '__main__':
 					flashers[person] = None
 
 		# Now loop through the data and see what has change - ring the bell for new parcels
-		# Only do this after the first iteration of the loop
-		if not first_loop:
+		try:
 			for person in CAS.keys():
 				new_parcels = [parcel for parcel in curr_parcels[person] if parcel not in prev_parcels[person]]
 				# If there are any new parcels, ring the bell
@@ -218,6 +214,10 @@ if __name__ == '__main__':
 					time.sleep(0.25)
 					hardware_queue.put((CHANNELS[-1], True))
 					break
+		# prev_parcels doesn't exist on first iteration of the loop
+		except NameError:
+			pass
+
 
 		# Clean up before sleeping
 		prev_parcels = curr_parcels.copy()
