@@ -7,7 +7,7 @@ from threading import Thread, Event
 import random
 from Queue import Queue
 import copy
-# import RPi.GPIO as GPIO
+import RPi.GPIO as GPIO
 
 
 # CAS members to watch and their bulb ordering
@@ -41,43 +41,18 @@ class StoppableThread(Thread):
 	def stopped(self):
 		return self._stop.isSet()
 
-# class hardware(Thread):
-# 	def __init__(self, hardware_queue):
-# 		Thread.__init__(self)
-
-# 		self.hardware_queue = hardware_queue
-
-# 		# Setup the GPIO channels
-# 		GPIO.setmode(GPIO.BCM)
-# 		for channel in CHANNELS:
-# 			GPIO.setmode(channel, GPIO.OUT)
-# 			GPIO.output(channel, GPIO.LOW)
-
-# 		self.start()
-
-# 	def run(self):
-# 		while True:
-# 			(channel, operation) = hardware_queue.get()
-# 			# Bell channel - turn off and on quickly
-# 			if channel is CHANNELS[-1]:
-# 				GPIO.output(channel, GPIO.HIGH)
-# 				GPIO.output(channel, GPIO.LOW)
-# 				GPIO.output(channel, GPIO.HIGH)
-# 				GPIO.output(channel, GPIO.LOW)
-# 			# Other channels - off for False, on for True
-# 			else:
-# 				if operation:
-# 					GPIO.output(channel, GPIO.HIGH)
-# 				else:
-# 					GPIO.output(channel, GPIO.LOW)
-# 			hardware_queue.task_done()
-
 class hardware(Thread):
 	def __init__(self, hardware_queue):
 		Thread.__init__(self)
-		self.daemon = True
 
 		self.hardware_queue = hardware_queue
+
+		# Setup the GPIO channels
+		GPIO.setmode(GPIO.BCM)
+		for channel in CHANNELS:
+			GPIO.setmode(channel, GPIO.OUT)
+			GPIO.output(channel, GPIO.LOW)
+
 		self.start()
 
 	def run(self):
@@ -85,14 +60,39 @@ class hardware(Thread):
 			(channel, operation) = hardware_queue.get()
 			# Bell channel - turn off and on quickly
 			if channel is CHANNELS[-1]:
-				print 'Ringing the bell'
+				GPIO.output(channel, GPIO.HIGH)
+				GPIO.output(channel, GPIO.LOW)
+				GPIO.output(channel, GPIO.HIGH)
+				GPIO.output(channel, GPIO.LOW)
 			# Other channels - off for False, on for True
 			else:
 				if operation:
-					print 'Turning channel: %d ON' % channel
+					GPIO.output(channel, GPIO.HIGH)
 				else:
-					print 'Turning channel: %d OFF' % channel
+					GPIO.output(channel, GPIO.LOW)
 			hardware_queue.task_done()
+
+# class hardware(Thread):
+# 	def __init__(self, hardware_queue):
+# 		Thread.__init__(self)
+# 		self.daemon = True
+
+# 		self.hardware_queue = hardware_queue
+# 		self.start()
+
+# 	def run(self):
+# 		while True:
+# 			(channel, operation) = hardware_queue.get()
+# 			# Bell channel - turn off and on quickly
+# 			if channel is CHANNELS[-1]:
+# 				print 'Ringing the bell'
+# 			# Other channels - off for False, on for True
+# 			else:
+# 				if operation:
+# 					print 'Turning channel: %d ON' % channel
+# 				else:
+# 					print 'Turning channel: %d OFF' % channel
+# 			hardware_queue.task_done()
 
 
 class flasher(StoppableThread):
@@ -130,20 +130,20 @@ if __name__ == '__main__':
 	# Fire up the hardware thread
 	hardware = hardware(hardware_queue)
 
-	# # Read user credentials from the credential file
-	# with open(LOGIN) as login:
-	# 		(username, password) = login.read().split(' ')
+	# Read user credentials from the credential file
+	with open(LOGIN) as login:
+			(username, password) = login.read().split(' ')
 
-	# # Create a password manager instance for the stores URL and load with user credentials
-	# password_mgr = urllib2.HTTPPasswordMgrWithDefaultRealm()
-	# password_mgr.add_password(None, STORES, username, password.decode('base64'))
+	# Create a password manager instance for the stores URL and load with user credentials
+	password_mgr = urllib2.HTTPPasswordMgrWithDefaultRealm()
+	password_mgr.add_password(None, STORES, username, password.decode('base64'))
 
-	# # Create and build an auth handler with this password manager and 
-	# handler = urllib2.HTTPBasicAuthHandler(password_mgr)
-	# opener = urllib2.build_opener(handler)
+	# Create and build an auth handler with this password manager and 
+	handler = urllib2.HTTPBasicAuthHandler(password_mgr)
+	opener = urllib2.build_opener(handler)
 
-	# # Install the opener
-	# urllib2.install_opener(opener)
+	# Install the opener
+	urllib2.install_opener(opener)
 
 	# Set up for the main loop
 	first_loop = True
@@ -151,16 +151,16 @@ if __name__ == '__main__':
 	# Loop forever, sleeping between iterations
 	while True:
 		# Open up the stores parcel tracker site, try again if times out
-		# response = None
-		# while response is None:
-		# 	try:
-		# 		response = urllib2.urlopen(STORES, timeout = 1)
-		# 	except urllib2.URLError, ssl.SSLError:
-		# 		pass
+		response = None
+		while response is None:
+			try:
+				response = urllib2.urlopen(STORES, timeout = 1)
+			except urllib2.URLError, ssl.SSLError:
+				pass
 
-		# # Read the site and pass to BeautifulSoup
-		# html = response.read()
-		# soup = BeautifulSoup(html)
+		# Read the site and pass to BeautifulSoup
+		html = response.read()
+		soup = BeautifulSoup(html)
 
 		with open('ParcelTracking.html') as website:
 			html = website.read()
