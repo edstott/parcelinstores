@@ -121,107 +121,122 @@ class flasher(StoppableThread):
 
 if __name__ == '__main__':
 
+	try: #Catch KeyboardInterrupt
 
-	# Built flasher instance dictionary
-	flashers = {x:None for x in CAS.keys()}
-
-	# Flasher queue
-	hardware_queue = Queue()
-
-	# Fire up the hardware thread
-	hardware = hardware(hardware_queue)
-
-	# Read user credentials from the credential file
-	with open(LOGIN) as login:
-			(username, password) = login.read().split(' ')
-
-	# Create a password manager instance for the stores URL and load with user credentials
-	password_mgr = urllib2.HTTPPasswordMgrWithDefaultRealm()
-	password_mgr.add_password(None, STORES, username, password.decode('base64'))
-
-	# Create and build an auth handler with this password manager and 
-	handler = urllib2.HTTPBasicAuthHandler(password_mgr)
-	opener = urllib2.build_opener(handler)
-
-	# Install the opener
-	urllib2.install_opener(opener)
-
-	# Set up for the main loop
-	first_loop = True
-
-	# Loop forever, sleeping between iterations
-	while True:
-		# Open up the stores parcel tracker site, try again if times out
-		response = None
-		while response is None:
-			try:
-				response = urllib2.urlopen(STORES, timeout = 1)
-				html = response.read()
-			except urllib2.URLError, ssl.SSLError:
-				time.sleep(5)
-				pass
-
-		# Read the site and pass to BeautifulSoup
-		soup = BeautifulSoup(html)
-
-		# with open('ParcelTracking.html') as website:
-		# 	html = website.read()
-		# soup = BeautifulSoup(html)
-
-		# Build current parcel data structure
-		curr_parcels = {x:[] for x in CAS.keys()}
-
-		# Find the first table in the page
-		table = soup.find("table")
-		# Find all of the rows (tr) objects with NEW attributes
-		for row in table.findAll('tr', NEW):
-				# Find all the cells/data (td) in this row
-				cells = row.findAll('td')
-				# Strip the tags from each cell and convert contents to utf8
-				cells = [cell.text.strip().encode('utf8') for cell in cells]
-				# Only process further if the row isn't blank
-				if cells:
-					for person in CAS.keys():
-						(surname, initial) = person.split(',')
-						# Check if the surname
-						if any([True if name.upper() == surname else False for name in cells[4].split(' ')]):
-							# Check the initial - only works if CAS members don't have same surname and forename initials!
-							if any([True if name.upper()[0] == initial else False for name in cells[4].split(' ')]):
-								curr_parcels[person].append(cells[0])
-
-
-		# Loop through the new parcels and fire up flashers for each person who has a parcel
-		for person in CAS.keys():
-			# If the person doesn't already have a flasher
-			if not flashers[person]:
-				# But they have a parcel
-				if curr_parcels[person]:
-					# Make them a flasher
-					flashers[person] = flasher(CHANNELS[CAS[person]], hardware_queue)
-			# If they do have a flasher
-			else:
-				#But they don't have a parcel
-				if not curr_parcels[person]:
-					# Get rid of their flasher
-					flashers[person].stop()
-					flashers[person].join()
-					flashers[person] = None
-
-		# Now loop through the data and see what has change - ring the bell for new parcels
-		# Only do this after the first iteration of the loop
-		if not first_loop:
+		# Built flasher instance dictionary
+		flashers = {x:None for x in CAS.keys()}
+	
+		# Flasher queue
+		hardware_queue = Queue()
+	
+		# Fire up the hardware thread
+		hardware = hardware(hardware_queue)
+	
+		# Read user credentials from the credential file
+		with open(LOGIN) as login:
+				(username, password) = login.read().split(' ')
+	
+		# Create a password manager instance for the stores URL and load with user credentials
+		password_mgr = urllib2.HTTPPasswordMgrWithDefaultRealm()
+		password_mgr.add_password(None, STORES, username, password.decode('base64'))
+	
+		# Create and build an auth handler with this password manager and 
+		handler = urllib2.HTTPBasicAuthHandler(password_mgr)
+		opener = urllib2.build_opener(handler)
+	
+		# Install the opener
+		urllib2.install_opener(opener)
+	
+		# Set up for the main loop
+		first_loop = True
+	
+		# Loop forever, sleeping between iterations
+		while True:
+			# Open up the stores parcel tracker site, try again if times out
+			response = None
+			while response is None:
+				try:
+					response = urllib2.urlopen(STORES, timeout = 1)
+					html = response.read()
+				except urllib2.URLError, ssl.SSLError:
+					time.sleep(5)
+					pass
+	
+			# Read the site and pass to BeautifulSoup
+			soup = BeautifulSoup(html)
+	
+			# with open('ParcelTracking.html') as website:
+			# 	html = website.read()
+			# soup = BeautifulSoup(html)
+	
+			# Build current parcel data structure
+			curr_parcels = {x:[] for x in CAS.keys()}
+	
+			# Find the first table in the page
+			table = soup.find("table")
+			# Find all of the rows (tr) objects with NEW attributes
+			for row in table.findAll('tr', NEW):
+					# Find all the cells/data (td) in this row
+					cells = row.findAll('td')
+					# Strip the tags from each cell and convert contents to utf8
+					cells = [cell.text.strip().encode('utf8') for cell in cells]
+					# Only process further if the row isn't blank
+					if cells:
+						for person in CAS.keys():
+							(surname, initial) = person.split(',')
+							# Check if the surname
+							if any([True if name.upper() == surname else False for name in cells[4].split(' ')]):
+								# Check the initial - only works if CAS members don't have same surname and forename initials!
+								if any([True if name.upper()[0] == initial else False for name in cells[4].split(' ')]):
+									curr_parcels[person].append(cells[0])
+	
+	
+			# Loop through the new parcels and fire up flashers for each person who has a parcel
 			for person in CAS.keys():
-				new_parcels = [parcel for parcel in curr_parcels[person] if parcel not in prev_parcels[person]]
-				# If there are any new parcels, ring the bell
-				if new_parcels:
-					hardware_queue.put((CHANNELS[-1], True))
-					time.sleep(0.25)
-					hardware_queue.put((CHANNELS[-1], True))
-					break
-
-		# Clean up before sleeping
-		prev_parcels = curr_parcels.copy()
-		first_loop = False
-
-		# Sleep for a bit
-		time.sleep(SLEEP)
+				# If the person doesn't already have a flasher
+				if not flashers[person]:
+					# But they have a parcel
+					if curr_parcels[person]:
+						# Make them a flasher
+						flashers[person] = flasher(CHANNELS[CAS[person]], hardware_queue)
+				# If they do have a flasher
+				else:
+					#But they don't have a parcel
+					if not curr_parcels[person]:
+						# Get rid of their flasher
+						flashers[person].stop()
+						flashers[person].join()
+						flashers[person] = None
+	
+			# Now loop through the data and see what has change - ring the bell for new parcels
+			# Only do this after the first iteration of the loop
+			if not first_loop:
+				for person in CAS.keys():
+					new_parcels = [parcel for parcel in curr_parcels[person] if parcel not in prev_parcels[person]]
+					# If there are any new parcels, ring the bell
+					if new_parcels:
+						hardware_queue.put((CHANNELS[-1], True))
+						time.sleep(0.25)
+						hardware_queue.put((CHANNELS[-1], True))
+						break
+	
+			# Clean up before sleeping
+			prev_parcels = curr_parcels.copy()
+			first_loop = False
+	
+			# Sleep for a bit
+			time.sleep(SLEEP)
+	
+	except KeyboardInterrupt:
+		for channel in CHANNELS:
+			hardware_queue.put((channel, False))	
+			
+		for flasher in flashers:
+			try:
+				flasher.stop()
+				flasher.join()
+			except AttributeError:
+				pass
+		hardware.stop()
+		hardware.join()
+		GPIO.cleanup()
