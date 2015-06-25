@@ -156,12 +156,12 @@ if __name__ == '__main__':
 		while response is None:
 			try:
 				response = urllib2.urlopen(STORES, timeout = 1)
+				html = response.read()
 			except urllib2.URLError, ssl.SSLError:
 				time.sleep(5)
 				pass
 
 		# Read the site and pass to BeautifulSoup
-		html = response.read()
 		soup = BeautifulSoup(html)
 
 		# with open('ParcelTracking.html') as website:
