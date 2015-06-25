@@ -6,7 +6,6 @@ import time
 from threading import Thread, Event
 import random
 from Queue import Queue
-import copy
 import RPi.GPIO as GPIO
 
 
@@ -50,7 +49,7 @@ class hardware(Thread):
 		# Setup the GPIO channels
 		GPIO.setmode(GPIO.BCM)
 		for channel in CHANNELS:
-			GPIO.setmode(channel, GPIO.OUT)
+			GPIO.setup(channel, GPIO.OUT)
 			GPIO.output(channel, GPIO.LOW)
 
 		self.start()
