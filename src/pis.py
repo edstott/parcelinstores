@@ -10,7 +10,7 @@ import RPi.GPIO as GPIO
 
 
 # CAS members to watch and their bulb ordering
-CAS = {'LEVINE,J':3, 'STOTT,E':5, 'DAVIS,J':1, 'OGDEN,P':4, 'WIJEYASINGHE,M':0, 'HUNG,E':2}
+CAS = {'LEVINE,J':3, 'STOTT,E':5, 'DAVIS,J':1, 'OGDEN,P':4, 'HSISSEN,W':0, 'HUNG,E':2}
 
 # Lamp to channel relationships
 # Index is ordering (bulb is CHANNELS[-1])
