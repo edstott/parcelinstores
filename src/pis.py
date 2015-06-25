@@ -154,6 +154,7 @@ if __name__ == '__main__':
 			try:
 				response = urllib2.urlopen(STORES, timeout = 1)
 			except urllib2.URLError, ssl.SSLError:
+				time.sleep(1)
 				pass
 
 		# Read the site and pass to BeautifulSoup
