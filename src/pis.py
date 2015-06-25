@@ -211,7 +211,7 @@ if __name__ == '__main__':
 				# If there are any new parcels, ring the bell
 				if new_parcels:
 					hardware_queue.put((CHANNELS[-1], True))
-					time.sleep(1)
+					time.sleep(0.25)
 					hardware_queue.put((CHANNELS[-1], True))
 					break
 
