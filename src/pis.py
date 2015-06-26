@@ -51,6 +51,9 @@ for person in CAS.keys():
 
 	pwms[person] = (GPIO.PWM(channel, FLASH_FREQ+flash_freq_rand), FLASH_DUTY+flash_duty_rand)
 
+	# Turn on all the PWMs but set their dutycycle to 0
+	pwms[person][0].start(0)
+
 # Setup the bell channel
 	GPIO.setup(CHANNELS[-1], GPIO.OUT)
 	GPIO.output(CHANNELS[-1], GPIO.LOW)
@@ -121,17 +124,17 @@ while True:
 				ring_bell = True
 			# Didn't previously have any parcels and now do - just delivered
 			if not prev_parcels[person] and curr_parcels[person]:
-				pwms[person][0].start(pwms[person][1])
+				pwms[person][0].ChangeDutyCycle(pwms[person][1])
 			# Previously had parcels and now don't - just collected
 			elif not curr_parcels[person] and prev_parcels[person]:
-				pwms[person][0].stop()
+				pwms[person][0].ChangeDutyCycle(0)
 
 	# On the first iteration prev_parcels doesn't exist
 	except NameError:
 		for person in CAS.keys():
 			# Turn on the bulb for whoever has parcels
 			if curr_parcels[person]:
-				pwms[person][0].start(pwms[person][1])
+				pwms[person][0].ChangeDutyCycle(pwms[person][1])
 
 	# Do the actual bell ringing if required
 	if ring_bell:
