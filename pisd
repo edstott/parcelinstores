@@ -12,7 +12,7 @@
 
 PIS_USER=root
 NAME=pis_screen
-DIR=/home/pi/Dev/parcelinstores
+DIR=/home/pi/Dev/parcelinstores/src
 DESC="Parcel In Stores"
 
 case "$1" in
