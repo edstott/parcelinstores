@@ -6,6 +6,8 @@ import time
 import random
 import RPi.GPIO as GPIO
 import logging
+import traceback
+from datetime import datetime
 
 # CAS members to watch and their bulb ordering
 CAS = {'LEVINE,J':3, 'STOTT,E':5, 'DAVIS,J':1, 'OGDEN,P':4, 'HSISSEN,W':0, 'HUNG,E':2}
@@ -16,8 +18,6 @@ CHANNELS = [12, 1, 25, 24, 23, 18, 14]
 
 # Credential file
 LOGIN = '.credentials'
-# URL of stores parcel tracker
-STORES = 'https://intranet.ee.ic.ac.uk/storesweb/parcels/GoodsInWeb.html'
 # Colour of new and collected parcels
 NEW = {'bgcolor':'Beige'}
 COLLECTED = {'bgcolor':'LightSteelBlue'}
@@ -34,6 +34,52 @@ RETRY_SLEEP = 5
 LOG_FILE = "pis.log"
 DEBUG_LEVEL = logging.INFO
 
+#Stores settings
+STORES = 'https://intranet.ee.ic.ac.uk/storesweb/parcels/GoodsInWeb.html'
+STORES_DAYS = [1,2,3,4,5] #1 = Monday, 7 = Sunday
+STORES_HOURS = ('09:00','17:00')
+
+def checkparcels(CAS):
+	# Open up the stores parcel tracker site, try again if times out
+	response = None
+	while response is None:
+		try:
+			response = urllib2.urlopen(STORES, timeout = 1)
+			html = response.read()
+		except urllib2.URLError, ssl.SSLError:
+			logging.warning('Failed to read parcel tracker, retrying')
+			time.sleep(RETRY_SLEEP)
+			pass
+
+	# Read the site and pass to BeautifulSoup
+	soup = BeautifulSoup(html)
+
+	#with open('ParcelTracking.html') as website:
+	#	html = website.read()
+	#soup = BeautifulSoup(html)
+
+	# Build current parcel data structure
+	curr_parcels = {x:[] for x in CAS.keys()}
+
+	# Find the first table in the page
+	table = soup.find("table")
+	# Find all of the rows (tr) objects with NEW attributes
+	for row in table.findAll('tr', NEW):
+			# Find all the cells/data (td) in this row
+			cells = row.findAll('td')
+			# Strip the tags from each cell and convert contents to utf8
+			cells = [cell.text.strip().encode('utf8') for cell in cells]
+			# Only process further if the row isn't blank
+			if cells:
+				for person in CAS.keys():
+					(surname, initial) = person.split(',')
+					# Check if the surname
+					if any([True if name.upper() == surname else False for name in cells[4].split(' ')]):
+						# Check the initial - only works if CAS members don't have same surname and forename initials!
+						if any([True if name.upper()[0] == initial else False for name in cells[4].split(' ')]):
+							curr_parcels[person].append(cells[0])
+	return curr_parcels
+
 #Setup logging
 logging.basicConfig(filename=LOG_FILE,level=DEBUG_LEVEL,format='%(levelname)s %(asctime)s: %(message)s',datefmt='%a, %d %b %Y %H:%M:%S')
 consolelog = logging.StreamHandler()
@@ -42,8 +88,33 @@ consoleformatter = logging.Formatter(fmt='%(levelname)s %(asctime)s: %(message)s
 consolelog.setFormatter(consoleformatter)
 logging.getLogger('').addHandler(consolelog)
 
-
 logging.info('Starting parcelinstores')
+
+#Setup opening hours
+opentime = datetime.strptime(STORES_HOURS[0],'%H:%M').time()
+closetime = datetime.strptime(STORES_HOURS[1],'%H:%M').time()
+now = datetime.now()
+storesopen = now.isoweekday() in STORES_DAYS and now.time()>opentime and now.time()<closetime
+storeswasopen = storesopen
+
+# Read user credentials from the credential file
+with open(LOGIN) as login:
+		(username, password) = login.read().split(' ')
+
+# Create a password manager instance for the stores URL and load with user credentials
+password_mgr = urllib2.HTTPPasswordMgrWithDefaultRealm()
+password_mgr.add_password(None, STORES, username, password.decode('base64'))
+
+# Create and build an auth handler with this password manager and 
+handler = urllib2.HTTPBasicAuthHandler(password_mgr)
+opener = urllib2.build_opener(handler)
+
+# Install the opener
+urllib2.install_opener(opener)
+
+#Setup data
+curr_parcels = checkparcels(CAS)
+prev_parcels = curr_parcels.copy()
 
 # Catch exceptions from this point onwards so that GPIO can be reset
 try:
@@ -79,68 +150,23 @@ try:
 	GPIO.setup(CHANNELS[-1], GPIO.OUT)
 	GPIO.output(CHANNELS[-1], GPIO.LOW)
 
-	# Read user credentials from the credential file
-	with open(LOGIN) as login:
-			(username, password) = login.read().split(' ')
-
-	# Create a password manager instance for the stores URL and load with user credentials
-	password_mgr = urllib2.HTTPPasswordMgrWithDefaultRealm()
-	password_mgr.add_password(None, STORES, username, password.decode('base64'))
-
-	# Create and build an auth handler with this password manager and 
-	handler = urllib2.HTTPBasicAuthHandler(password_mgr)
-	opener = urllib2.build_opener(handler)
-
-	# Install the opener
-	urllib2.install_opener(opener)
+	# Turn on the bulb for whomever has parcels if starting when stores is open
+	if storesopen: 
+		for person in CAS.keys():
+			if curr_parcels[person]:
+				pwms[person][0].ChangeDutyCycle(pwms[person][1])
 
 	# Loop forever, sleeping between iterations
 	logging.info('Commencing parcel monitor')
 	while True:
-		# Open up the stores parcel tracker site, try again if times out
-		response = None
-		while response is None:
-			try:
-				response = urllib2.urlopen(STORES, timeout = 1)
-				html = response.read()
-			except urllib2.URLError, ssl.SSLError:
-				logging.warning('Failed to read parcel tracker, retrying')
-				time.sleep(RETRY_SLEEP)
-				pass
-
-		#with open('ParcelTracking.html') as f:
-		#	html = f.read()
-
-		# Read the site and pass to BeautifulSoup
-		soup = BeautifulSoup(html)
-
-		# with open('ParcelTracking.html') as website:
-		# 	html = website.read()
-		# soup = BeautifulSoup(html)
-
-		# Build current parcel data structure
-		curr_parcels = {x:[] for x in CAS.keys()}
-
-		# Find the first table in the page
-		table = soup.find("table")
-		# Find all of the rows (tr) objects with NEW attributes
-		for row in table.findAll('tr', NEW):
-				# Find all the cells/data (td) in this row
-				cells = row.findAll('td')
-				# Strip the tags from each cell and convert contents to utf8
-				cells = [cell.text.strip().encode('utf8') for cell in cells]
-				# Only process further if the row isn't blank
-				if cells:
-					for person in CAS.keys():
-						(surname, initial) = person.split(',')
-						# Check if the surname
-						if any([True if name.upper() == surname else False for name in cells[4].split(' ')]):
-							# Check the initial - only works if CAS members don't have same surname and forename initials!
-							if any([True if name.upper()[0] == initial else False for name in cells[4].split(' ')]):
-								curr_parcels[person].append(cells[0])
+		#Is stores open
+		now = datetime.now()
+		storesopen = now.isoweekday() in STORES_DAYS and now.time()>opentime and now.time()<closetime
 
 		ring_bell = False
-		try:
+
+		if storesopen:
+			curr_parcels = checkparcels(CAS)
 			for person in CAS.keys():
 				# Find parcels that weren't there before and now are - ring the bell if there are any
 				if [parcel for parcel in curr_parcels[person] if parcel not in prev_parcels[person]]:
@@ -153,13 +179,18 @@ try:
 				elif not curr_parcels[person] and prev_parcels[person]:
 					pwms[person][0].ChangeDutyCycle(0)
 					logging.info(person + ' collected their parcel(s)')
-
-		# On the first iteration prev_parcels doesn't exist
-		except NameError:
+		
+		# Turn on the bulb for whomever has parcels when stores open
+		if storesopen and not storeswasopen: 
+			logging.info('Stores has opened')				
 			for person in CAS.keys():
-				# Turn on the bulb for whoever has parcels
 				if curr_parcels[person]:
 					pwms[person][0].ChangeDutyCycle(pwms[person][1])
+ 		# Turn off bulbs when stores closes
+		if not storesopen and storeswasopen:
+			logging.info('Stores has closed')
+			for person in CAS.keys():
+				pwms[person][0].ChangeDutyCycle(0)		
 
 		# Do the actual bell ringing if required
 		if ring_bell:
@@ -173,6 +204,7 @@ try:
 
 		# Clean up before sleeping
 		prev_parcels = curr_parcels.copy()
+		storeswasopen = storesopen
 		# Sleep for a bit
 		time.sleep(SLEEP)
 except KeyboardInterrupt:
@@ -186,6 +218,8 @@ except KeyboardInterrupt:
 	GPIO.cleanup()
 
 except:
-	logging.info('Exception: shutting down GPIO')
+	logging.error('Exception: shutting down GPIO')
+	with open('pis.error','w') as errlog:
+		traceback.print_exc(None,errlog)
 	GPIO.cleanup()
 	raise
