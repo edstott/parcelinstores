@@ -1,0 +1,62 @@
+#! /bin/bash
+
+### BEGIN INIT INFO
+# Provides:		pisd
+# Required-Start:	$all
+# Required-Stop:	$local_fs $network $named
+# Default-Start:	2 3 4 5
+# Default-Stop:		0 1 6
+# Short-Description:	PIS daemon
+# Description:	Parcel In Stores
+### END INIT INFO
+
+PIS_USER=root
+NAME=pis_screen
+DIR=/home/pi/parcelinstores
+DESC="Parcel In Stores"
+
+case "$1" in
+start)
+	if [[ `su $PIS_USER -c "screen -ls |grep $NAME"` ]]
+		then
+		echo "$DESC is already running"
+	else
+		echo "Starting $DESC in session $NAME"
+		su $PIS_USER -c "cd $DIR; screen -dmS $NAME python pis.py"
+	fi
+	;;
+stop)
+	if [[ `su $PIS_USER -c "screen -ls |grep $NAME"` != "" ]]
+		then
+		echo -n "Stopping $DESC"
+		su $PIS_USER -c "kill -2 $(ps h --ppid $(screen -ls | grep $NAME | cut -d. -f1) -o pid)"
+		echo "...done."
+	else
+		echo "Couldn't find a running $DESC"
+	fi
+	;;
+restart)
+	if [[ `su $PIS_USER -c "screen -ls |grep $NAME"` ]]
+		then
+		echo -n "Stopping $DESC"
+		su $PIS_USER -c "kill -2 $(ps h --ppid $(screen -ls | grep $NAME | cut -d. -f1) -o pid)"
+		echo "...done."
+	else
+		echo "Couldn't find a running $DESC"
+	fi
+	echo "Starting $DESC in session $NAME"
+	su $PIS_USER -c "cd $DIR; screen -dmS $NAME python pis.py"
+	;;
+status)
+	if [[ `su $PIS_USER -c "screen -ls |grep $NAME"` ]]
+		then		
+		echo "$DESC is running"
+	else
+		echo "$DESC is not running"
+	fi
+	;;
+ *)
+ 	echo "Usage: $0 {start|stop|status|restart}"
+    	exit 1
+    	;;
+ esac
