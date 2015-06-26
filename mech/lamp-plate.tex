@@ -3,7 +3,7 @@
 \begin{tikzpicture}[x=1mm,y=1mm,every path/.style={color=red,line width=0.01bp,text=blue}]
 	\newcommand\pischannels{6}
 	\newcommand\pislamprad{10}
-	\newcommand\pislampx{35}
+	\newcommand\pislampx{40}
 	\newcommand\pislamppitch{38}
 	\newcommand\pislamptop{30}
 	\newcommand\pislampbot{165}
@@ -18,7 +18,7 @@
 	\newcommand\pismortwidth{3}
 	\newcommand\pismortpitch{25}
 
-	\newcommand\pisbelldia{156}
+	\newcommand\pisbelldia{160}
 
 	\newcommand\pisgap{6}
 	\newcommand\pisstandlen{120}
@@ -92,7 +92,7 @@
 		
 		}
 
-	\node [align=center] at ($0.5*(\piswidth,\pislampbot)$) {\huge Parcel\\\huge in\\ \huge Stores};
+	\node [align=center] at ($0.5*(\piswidth,\pislampbot)$) {\includegraphics{parcel_in_stores}};
 
 
 	\foreach \y in {1,...,\pismortcount}
@@ -102,9 +102,9 @@
 		\multiply\pismorty by \pismortpitch
 		\advance\pismorty by \pisheight
 		\advance\pismorty by \pisgap
-		\draw ($(\pismortinset,\pismorty)+(0,\pismortinset)$)
-			-- +(-\pismortinset,0)
-			-- +(-\pismortinset,\pismortlen)
+		\draw ($(\pismortwidth,\pismorty)+(0,\pismortinset)$)
+			-- +(-\pismortwidth,0)
+			-- +(-\pismortwidth,\pismortlen)
 			-- +(0,\pismortlen)
 			-- +(0,\pismortpitch);
 		}
@@ -113,9 +113,9 @@
 	\multiply\pismorty by \pismortpitch
 	\advance\pismorty by \pismortinset
 		
-	\draw ($(0,\pisheight)+(\pismortinset,\pisgap)$)
+	\draw ($(0,\pisheight)+(\pismortwidth,\pisgap)$)
 			-- +(0,\pismortinset);
-	\draw ($(0,\pisheight)+(\pismortinset,\pisgap)$)
+	\draw ($(0,\pisheight)+(\pismortwidth,\pisgap)$)
 			-- +(\pisstandlen,0)
 			-- + (0,\pismorty);
 
@@ -125,9 +125,9 @@
 		\multiply\pismorty by \pismortpitch
 		\advance\pismorty by \pisheight
 		\advance\pismorty by \pisgap
-		\draw ($(\piswidth,\pismorty)-(\pismortinset,0)$)
-			-- +(\pismortinset,0)
-			-- +(\pismortinset,-\pismortlen)
+		\draw ($(\piswidth,\pismorty)-(\pismortwidth,0)$)
+			-- +(\pismortwidth,0)
+			-- +(\pismortwidth,-\pismortlen)
 			-- +(0,-\pismortlen)
 			-- +(0,-\pismortpitch);
 		}
@@ -135,7 +135,7 @@
 	\pismorty = \pismortcount
 	\multiply\pismorty by \pismortpitch
 	\advance\pismorty by \pisgap
-	\draw ($(\piswidth,\pisheight)+(-\pismortinset,\pismorty)$)
+	\draw ($(\piswidth,\pisheight)+(-\pismortwidth,\pismorty)$)
 			-- +(0,\pismortinset)
 			-- +(-\pisstandlen,\pismortinset)
 			-- +($(0,-\pismorty)+(0,\pisgap)$);
