@@ -34,7 +34,7 @@ RETRY_SLEEP = 5
 GPIO.setwarnings(False)
 
 # Dictionary to contain PWM instances and duty cycles for each person
-self.pwms ={}
+pwms ={}
 
 # Setup the GPIO channels
 GPIO.setmode(GPIO.BCM)
