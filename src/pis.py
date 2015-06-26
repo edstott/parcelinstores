@@ -41,7 +41,7 @@ GPIO.setmode(GPIO.BCM)
 
 # Setup the bulb channels
 for person in CAS.keys():
-	channel = CHANNELS[CAS[person]]
+	channel = CHANNELS[CAS[person]]ls
 
 	GPIO.setup(channel, GPIO.OUT)
 	GPIO.output(channel, GPIO.LOW)
@@ -59,28 +59,31 @@ for person in CAS.keys():
 with open(LOGIN) as login:
 		(username, password) = login.read().split(' ')
 
-# Create a password manager instance for the stores URL and load with user credentials
-password_mgr = urllib2.HTTPPasswordMgrWithDefaultRealm()
-password_mgr.add_password(None, STORES, username, password.decode('base64'))
+# # Create a password manager instance for the stores URL and load with user credentials
+# password_mgr = urllib2.HTTPPasswordMgrWithDefaultRealm()
+# password_mgr.add_password(None, STORES, username, password.decode('base64'))
 
-# Create and build an auth handler with this password manager and 
-handler = urllib2.HTTPBasicAuthHandler(password_mgr)
-opener = urllib2.build_opener(handler)
+# # Create and build an auth handler with this password manager and 
+# handler = urllib2.HTTPBasicAuthHandler(password_mgr)
+# opener = urllib2.build_opener(handler)
 
-# Install the opener
-urllib2.install_opener(opener)
+# # Install the opener
+# urllib2.install_opener(opener)
 
 # Loop forever, sleeping between iterations
 while True:
-	# Open up the stores parcel tracker site, try again if times out
-	response = None
-	while response is None:
-		try:
-			response = urllib2.urlopen(STORES, timeout = 1)
-			html = response.read()
-		except urllib2.URLError, ssl.SSLError:
-			time.sleep(RETRY_SLEEP)
-			pass
+	# # Open up the stores parcel tracker site, try again if times out
+	# response = None
+	# while response is None:
+	# 	try:
+	# 		response = urllib2.urlopen(STORES, timeout = 1)
+	# 		html = response.read()
+	# 	except urllib2.URLError, ssl.SSLError:
+	# 		time.sleep(RETRY_SLEEP)
+	# 		pass
+
+	with open('ParcelTracking.html') as f:
+		html = f.read()
 
 	# Read the site and pass to BeautifulSoup
 	soup = BeautifulSoup(html)
