@@ -41,7 +41,7 @@ GPIO.setmode(GPIO.BCM)
 
 # Setup the bulb channels
 for person in CAS.keys():
-	channel = CHANNELS[CAS[person]]ls
+	channel = CHANNELS[CAS[person]]
 
 	GPIO.setup(channel, GPIO.OUT)
 	GPIO.output(channel, GPIO.LOW)
@@ -135,13 +135,13 @@ while True:
 
 	# Do the actual bell ringing if required
 	if ring_bell:
-		GPIO.output(channel, GPIO.HIGH)
+		GPIO.output(CHANNELS[-1], GPIO.HIGH)
 		time.sleep(0.025)
-		GPIO.output(channel, GPIO.LOW)
+		GPIO.output(CHANNELS[-1], GPIO.LOW)
 		time.sleep(0.25)
-		GPIO.output(channel, GPIO.HIGH)
+		GPIO.output(CHANNELS[-1], GPIO.HIGH)
 		time.sleep(0.025)
-		GPIO.output(channel, GPIO.LOW)
+		GPIO.output(CHANNELS[-1], GPIO.LOW)
 
 	# Clean up before sleeping
 	prev_parcels = curr_parcels.copy()
