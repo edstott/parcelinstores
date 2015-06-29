@@ -38,7 +38,7 @@ DEBUG_LEVEL = logging.INFO
 #Stores settings
 STORES = 'https://intranet.ee.ic.ac.uk/storesweb/parcels/GoodsInWeb.html'
 STORES_DAYS = [1,2,3,4,5] #1 = Monday, 7 = Sunday
-STORES_HOURS = ('09:00','19:00')
+STORES_HOURS = ('08:30','17:00')
 
 def checkparcels(CAS):
 	# Open up the stores parcel tracker site, try again if times out
