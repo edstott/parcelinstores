@@ -15,6 +15,7 @@ CAS = {'LEVINE,J':3, 'STOTT,E':5, 'DAVIS,J':1, 'OGDEN,P':4, 'HSISSEN,W':0, 'HUNG
 # Lamp to channel relationships
 # Index is ordering (bulb is CHANNELS[-1])
 CHANNELS = [12, 1, 25, 24, 23, 18, 14]
+LEDS = [8,15]
 
 # Credential file
 LOGIN = '.credentials'
@@ -37,7 +38,7 @@ DEBUG_LEVEL = logging.INFO
 #Stores settings
 STORES = 'https://intranet.ee.ic.ac.uk/storesweb/parcels/GoodsInWeb.html'
 STORES_DAYS = [1,2,3,4,5] #1 = Monday, 7 = Sunday
-STORES_HOURS = ('09:00','17:00')
+STORES_HOURS = ('09:00','19:00')
 
 def checkparcels(CAS):
 	# Open up the stores parcel tracker site, try again if times out
@@ -150,15 +151,29 @@ try:
 	GPIO.setup(CHANNELS[-1], GPIO.OUT)
 	GPIO.output(CHANNELS[-1], GPIO.LOW)
 
+	# Setup alive and status LEDs
+	for LED in LEDS:
+		GPIO.setup(LED,GPIO.OUT)
+	aliveLED = GPIO.PWM(LEDS[0],2)
+	aliveLED.start(0)
+	statusLED = GPIO.PWM(LEDS[1],10)
+	statusLED.start(0)
+
 	# Turn on the bulb for whomever has parcels if starting when stores is open
-	if storesopen: 
+	if storesopen:
+		aliveLED.start(90)
 		for person in CAS.keys():
 			if curr_parcels[person]:
 				pwms[person][0].ChangeDutyCycle(pwms[person][1])
+	else:
+		aliveLED.start(10)
 
 	# Loop forever, sleeping between iterations
 	logging.info('Commencing parcel monitor')
 	while True:
+		#Start status LED while processing
+		statusLED.ChangeDutyCycle(50)
+
 		#Is stores open
 		now = datetime.now()
 		storesopen = now.isoweekday() in STORES_DAYS and now.time()>opentime and now.time()<closetime
@@ -182,13 +197,15 @@ try:
 		
 		# Turn on the bulb for whomever has parcels when stores open
 		if storesopen and not storeswasopen: 
-			logging.info('Stores has opened')				
+			logging.info('Stores has opened')
+			aliveLED.ChangeDutyCycle(90)				
 			for person in CAS.keys():
 				if curr_parcels[person]:
 					pwms[person][0].ChangeDutyCycle(pwms[person][1])
  		# Turn off bulbs when stores closes
 		if not storesopen and storeswasopen:
 			logging.info('Stores has closed')
+			aliveLED.ChangeDutyCycle(10)	
 			for person in CAS.keys():
 				pwms[person][0].ChangeDutyCycle(0)		
 
@@ -205,10 +222,15 @@ try:
 		# Clean up before sleeping
 		prev_parcels = curr_parcels.copy()
 		storeswasopen = storesopen
+
+		#Stop status LED when finished
+		statusLED.ChangeDutyCycle(0)
+
 		# Sleep for a bit
 		time.sleep(SLEEP)
 except KeyboardInterrupt:
 	logging.info('Exit due to SIGINT')
+	aliveLED.stop()
 	for pwm in pwms:
 		pwms[pwm][0].stop()
 	
