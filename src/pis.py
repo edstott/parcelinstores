@@ -7,7 +7,7 @@ import random
 import RPi.GPIO as GPIO
 import logging
 import traceback
-from datetime import datetime
+from datetime import datetime, timedelta
 
 # CAS members to watch and their bulb ordering
 CAS = {'LEVINE,J':3, 'STOTT,E':5, 'DAVIS,J':1, 'OGDEN,P':4, 'HSISSEN,W':0, 'HUNG,E':2}
@@ -27,9 +27,9 @@ FLASH_FREQ = 0.5
 FLASH_FREQ_RAND= 0.1
 FLASH_DUTY = 50
 FLASH_DUTY_RAND = 10
+
 # Stores website polling interval
-SLEEP = 10
-RETRY_SLEEP = 5
+SLEEP = 60
 
 #Log settings
 LOG_FILE = "pis.log"
@@ -39,18 +39,25 @@ DEBUG_LEVEL = logging.INFO
 STORES = 'https://intranet.ee.ic.ac.uk/storesweb/parcels/GoodsInWeb.html'
 STORES_DAYS = [1,2,3,4,5] #1 = Monday, 7 = Sunday
 STORES_HOURS = ('08:30','17:00')
+MAX_PARCEL_AGE = 4 #Maximum parcel age in days
 
 def checkparcels(CAS):
 	# Open up the stores parcel tracker site, try again if times out
-	response = None
-	while response is None:
+	html = None
+	retry = 0
+	while html is None:
 		try:
 			response = urllib2.urlopen(STORES, timeout = 1)
 			html = response.read()
-		except urllib2.URLError, ssl.SSLError:
-			logging.warning('Failed to read parcel tracker, retrying')
-			time.sleep(RETRY_SLEEP)
-			pass
+		except (urllib2.URLError, ssl.SSLError):
+			retry_sleep = 2.0**retry
+			retry += 1
+			logging.warning('Failed to read parcel tracker on attempt '+str(retry))
+			logging.warning('Retrying in '+str(retry_sleep)+' s')
+			time.sleep(retry_sleep)
+
+	if retry:
+		logging.info('Connection restored on attempt '+str(retry+1))
 
 	# Read the site and pass to BeautifulSoup
 	soup = BeautifulSoup(html)
@@ -72,12 +79,17 @@ def checkparcels(CAS):
 			cells = [cell.text.strip().encode('utf8') for cell in cells]
 			# Only process further if the row isn't blank
 			if cells:
+				# Date check
+				age = (datetime.now() - datetime.strptime(cells[1],'%d/%m/%Y'))
+				recent = age <= timedelta(MAX_PARCEL_AGE)
 				for person in CAS.keys():
 					(surname, initial) = person.split(',')
 					# Check if the surname
-					if any([True if name.upper() == surname else False for name in cells[4].split(' ')]):
+					sNameMatch = any([True if name.upper().rstrip(',') == surname else False for name in cells[4].split(' ')])
+					if sNameMatch:
 						# Check the initial - only works if CAS members don't have same surname and forename initials!
-						if any([True if name.upper()[0] == initial else False for name in cells[4].split(' ')]):
+						iNameMatch = any([True if name.upper()[0] == initial else False for name in cells[4].split(' ')])
+						if recent and iNameMatch:
 							curr_parcels[person].append(cells[0])
 	return curr_parcels
 
