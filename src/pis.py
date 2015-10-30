@@ -10,7 +10,8 @@ import traceback
 from datetime import datetime, timedelta
 
 # CAS members to watch and their bulb ordering
-CAS = {'LEVINE,J':3, 'STOTT,E':5, 'DAVIS,J':1, 'OGDEN,P':4, 'HSISSEN,W':0, 'HUNG,E':2}
+# If initial equals first character of name, initial check is skipped
+CAS = {'LEVINE,J':3, 'STOTT,S':5, 'DAVIS,J':1, 'OGDEN,P':4, 'HSISSEN,W':0, 'HUNG,E':2}
 
 # Lamp to channel relationships
 # Index is ordering (bulb is CHANNELS[-1])
@@ -52,8 +53,8 @@ def checkparcels(CAS):
 		except (urllib2.URLError, ssl.SSLError):
 			retry_sleep = 2.0**retry
 			retry += 1
-			logging.warning('Failed to read parcel tracker on attempt '+str(retry))
-			logging.warning('Retrying in '+str(retry_sleep)+' s')
+			#logging.warning('Failed to read parcel tracker on attempt '+str(retry))
+			#logging.warning('Retrying in '+str(retry_sleep)+' s')
 			time.sleep(retry_sleep)
 
 	if retry:
