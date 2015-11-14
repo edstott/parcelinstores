@@ -8,6 +8,7 @@ import RPi.GPIO as GPIO
 import logging
 import traceback
 from datetime import datetime, timedelta
+import cattTwitter
 
 # CAS members to watch and their bulb ordering
 # If initial equals first character of name, initial check is skipped
@@ -41,6 +42,10 @@ STORES = 'https://intranet.ee.ic.ac.uk/storesweb/parcels/GoodsInWeb.html'
 STORES_DAYS = [1,2,3,4,5] #1 = Monday, 7 = Sunday
 STORES_HOURS = ('08:30','17:00')
 MAX_PARCEL_AGE = 4 #Maximum parcel age in days
+
+#Twitter settings
+TWITTER_EN = True
+PIS_MSG = 'Parcel in Stores'
 
 def checkparcels(CAS):
 	# Open up the stores parcel tracker site, try again if times out
@@ -129,6 +134,10 @@ urllib2.install_opener(opener)
 #Setup data
 curr_parcels = checkparcels(CAS)
 prev_parcels = curr_parcels.copy()
+
+#Start twitter
+if (TWITTER_EN):
+	ctw = cattTwitter.cattTwitter()
 
 # Catch exceptions from this point onwards so that GPIO can be reset
 try:
@@ -232,6 +241,14 @@ try:
 			time.sleep(0.025)
 			GPIO.output(CHANNELS[-1], GPIO.LOW)
 
+			if (TWITTER_EN):
+				lamp_pattern = [''] * len(CAS)
+				for person,bulb in CAS:
+					lamp_pattern[bulb] = '1' if curr_parcels[person] else '0'				
+				imagefile=os.path.join('imglib',''.join(lamp_pattern)+'.gif')
+				ctw.tweetqueue.put(cattTwitter.cattTweet(PIS_MSG,image=imagefile))
+				logging.info('Sent tweet')
+
 		# Clean up before sleeping
 		prev_parcels = curr_parcels.copy()
 		storeswasopen = storesopen
@@ -251,6 +268,8 @@ except KeyboardInterrupt:
 		GPIO.output(channel,GPIO.LOW)
 
 	GPIO.cleanup()
+	if TWITTER_EN:
+		ctw.kill()
 
 except:
 	logging.error('Exception: shutting down GPIO')
