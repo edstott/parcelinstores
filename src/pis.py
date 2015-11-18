@@ -7,8 +7,10 @@ import random
 import RPi.GPIO as GPIO
 import logging
 import traceback
+import os
 from datetime import datetime, timedelta
 import cattTwitter
+
 
 # CAS members to watch and their bulb ordering
 # If initial equals first character of name, initial check is skipped
@@ -243,11 +245,11 @@ try:
 
 			if (TWITTER_EN):
 				lamp_pattern = [''] * len(CAS)
-				for person,bulb in CAS:
+				for person,bulb in CAS.items():
 					lamp_pattern[bulb] = '1' if curr_parcels[person] else '0'				
 				imagefile=os.path.join('imglib',''.join(lamp_pattern)+'.gif')
 				ctw.tweetqueue.put(cattTwitter.cattTweet(PIS_MSG,image=imagefile))
-				logging.info('Sent tweet')
+				#logging.info('Sent tweet')
 
 		# Clean up before sleeping
 		prev_parcels = curr_parcels.copy()
